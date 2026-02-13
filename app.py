@@ -351,40 +351,71 @@ def build_gemini_prompt(data: dict, score: int, level: str) -> str:
 def page_landing():
     st.markdown("<h1 class='main-title'>🚩 Red Flag Detector (WhatsApp Edition) 💅</h1>", unsafe_allow_html=True)
 
+    # Estado del chat en landing
+    if "landing_chat" not in st.session_state:
+        st.session_state.landing_chat = [
+            {"side": "left", "text": "Has tenido una cita????", "time": "22:41"},
+            {"side": "left", "text": "CUÉNTAMELO TODO YAAA", "time": "22:41"},
+            {"side": "right", "text": "Bestie… estoy procesando todavía 😭", "time": "22:42"},
+            {"side": "left", "text": "No me dejes en suspense que me da algo.", "time": "22:42"},
+            {"side": "left", "text": "Pásame señales: vibes, modales, celos, ex’s, TODO.", "time": "22:43"},
+            {"side": "right", "text": "Vale. Abro el detector. Si salta alarma, te saco de ahí.", "time": "22:43"},
+            {"side": "left", "text": "Primero: necesito tu Google API Key para invocar a Gemini. 🧙‍♀️", "time": "22:44"},
+            {
+                "side": "left",
+                "text": "Pégala aquí abajo como si me la mandaras por WhatsApp (tranqui, va en modo oculto).",
+                "time": "22:44",
+            },
+        ]
+
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
+        render_chat(st.session_state.landing_chat)
+
+        st.markdown("<hr class='soft'/>", unsafe_allow_html=True)
+        st.markdown(
+            "<div class='small-note'>Tip: si no tienes key todavía, te dejo el link. No invento URLs, por una vez.</div>",
+            unsafe_allow_html=True,
+        )
+        st.markdown("[Consigue tu API key aquí](https://aistudio.google.com/)")
+
+        # --- Composer estilo WhatsApp (input + enviar) ---
+        # Importante: input seguro type=password, pero UX chat
         with st.container():
-            messages = [
-                {"side": "left", "text": "Has tenido una cita????", "time": "22:41"},
-                {"side": "left", "text": "CUÉNTAMELO TODO YAAA", "time": "22:41"},
-                {"side": "right", "text": "Bestie… estoy procesando todavía 😭", "time": "22:42"},
-                {"side": "left", "text": "No me dejes en suspense que me da algo.", "time": "22:42"},
-                {"side": "left", "text": "Pásame señales: vibes, modales, celos, ex’s, TODO.", "time": "22:43"},
-                {"side": "right", "text": "Vale. Abro el detector. Si salta alarma, te saco de ahí.", "time": "22:43"},
-            ]
-            render_chat(messages)
+            c_in, c_btn = st.columns([5, 1])
+            with c_in:
+                api_key_draft = st.text_input(
+                    "Escribe tu API key como respuesta",
+                    type="password",
+                    placeholder="AIzaSy...",
+                    key="api_key_draft",
+                    label_visibility="collapsed",
+                )
+            with c_btn:
+                send = st.button("Enviar", use_container_width=True)
 
-            st.markdown("<hr class='soft'/>", unsafe_allow_html=True)
-            st.markdown("<div class='small-note'>Pulsa y empezamos el análisis serio (o lo más serio que permite el amor).</div>", unsafe_allow_html=True)
+        if send:
+            if not (api_key_draft or "").strip():
+                st.error("Me has mandado aire. Necesito la key, no vibes. 💅")
+                return
 
-            st.markdown("### 💬 Empezar análisis")
-            st.caption("Necesitamos tu Google API Key para que Gemini te suelte el consejo girlie (sin filtrarla, tranquila).")
+            # Guardar key (sin imprimirla)
+            st.session_state.api_key = api_key_draft.strip()
 
-            api_key = st.text_input(
-                "Google API Key",
-                type="password",
-                placeholder="AIzaSy...",
-                value=st.session_state.api_key or "",
+            # “Enviar” mensaje al chat pero enmascarado (NO mostramos la key real)
+            masked = "•" * min(16, max(8, len(st.session_state.api_key)))
+            st.session_state.landing_chat.append(
+                {"side": "right", "text": f"Aquí va: {masked}", "time": "22:45"}
             )
-            st.markdown("[Consigue tu API key aquí](https://aistudio.google.com/)")
-            # No la imprimimos, no la logueamos. La guardamos y ya.
+            st.session_state.landing_chat.append(
+                {"side": "left", "text": "Perfecto. Abriendo el cuestionario…", "time": "22:45"}
+            )
 
-            if st.button("🚀 Empezar análisis"):
-                if not api_key.strip():
-                    st.error("Sin API key no hay oráculo. Y sin oráculo solo quedan tus amigas y el caos. 💅")
-                    return
-                st.session_state.api_key = api_key.strip()
-                go("cuestionario")
+            # Limpia el draft por estética
+            st.session_state.api_key_draft = ""
+
+            go("cuestionario")
+
 
 def page_cuestionario():
     st.markdown("<h1 class='main-title'>📝 Cuestionario: el chismómetro con método</h1>", unsafe_allow_html=True)
