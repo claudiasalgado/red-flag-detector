@@ -4,6 +4,22 @@ import altair as alt
 from google import genai
 from datetime import datetime
 
+# ---------------------------------------------------
+# CONFIG
+# ---------------------------------------------------
+st.set_page_config(
+    page_title="Red Flag Detector 🚩",
+    page_icon="🚩",
+    layout="wide"
+)
+
+if "page" not in st.session_state:
+    st.session_state.page = "inicio"
+
+# ---------------------------------------------------
+# HELPERS
+# ---------------------------------------------------
+
 def stamp():
     return datetime.now().strftime("%H:%M")
 
@@ -25,7 +41,7 @@ def inject_chat_css():
     st.markdown("""
     <style>
       .chat-wrap{
-          height: 68vh;
+          height: 65vh;
           overflow-y: auto;
           padding: 18px 14px;
           border-radius: 22px;
@@ -48,7 +64,7 @@ def inject_chat_css():
       .bubble{
           max-width:70%;
           padding:12px 14px;border-radius:18px;
-          line-height:1.25rem;font-size:15.5px;
+          line-height:1.3rem;font-size:15.5px;
           box-shadow:0 10px 25px rgba(0,0,0,0.06);
           border:1px solid rgba(0,0,0,0.05);
           word-wrap:break-word;white-space:pre-wrap;
@@ -94,124 +110,149 @@ def render_custom_chat(messages):
     """
     st.markdown(html, unsafe_allow_html=True)
 
-juzgar = st.button("⚖️ EJECUTAR ANÁLISIS DE SEGURIDAD")
+# ---------------------------------------------------
+# PAGE 1 — INICIO
+# ---------------------------------------------------
 
-if juzgar:
-    answers = {
-        "location": location,
-        "alcohol": alcohol,
-        "ex_locas": int(ex_locas),
-        "interrupciones": int(interrupciones),
-        "futuro": int(futuro),
-        "selfies": int(selfies),
-        "crypto": int(crypto),
-        "perfume": perfume,
-        "puntualidad": puntualidad,
-        "outfit_effort": outfit_effort,
-        "movil": int(movil),
-        "camareros": camareros
-    }
+if st.session_state.page == "inicio":
 
-    df, nivel_total = compute_score(answers)
+    st.markdown("<h1 style='text-align:center;color:#C71585;'>✨ Red Flag Detector ✨</h1>", unsafe_allow_html=True)
+    st.write("Analiza tu cita antes de que analice tu estabilidad emocional.")
 
-    st.session_state.answers = answers
-    st.session_state.score_df = df
-    st.session_state.nivel_total = nivel_total
+    api_key = st.text_input("Introduce tu Google API Key", type="password")
 
-    # Inicializa el chat de veredicto (mensajes)
-    st.session_state.verdict_chat = [
-        {"role":"assistant","content":"Bestie… acabo de recibir el informe confidencial 🚨", "ts": stamp()},
-        {"role":"assistant","content":f"Índice de toxicidad: {nivel_total}%.", "ts": stamp()},
-    ]
-
-    st.session_state.page = "veredicto"
-    st.rerun()
-
-elif st.session_state.page == "veredicto":
-    st.markdown("<h1 class='main-title'>💬 Tu bestie tiene un veredicto</h1>", unsafe_allow_html=True)
-
-    with st.sidebar:
-        st.markdown("## 🧾 Navegación")
-        if st.button("🔁 Rehacer cuestionario"):
+    if st.button("🚀 Empezar"):
+        if api_key:
+            st.session_state.api_key = api_key
             st.session_state.page = "cuestionario"
             st.rerun()
-        if st.button("🏠 Volver al inicio"):
+        else:
+            st.error("Necesitas API key para invocar al Oráculo.")
+
+# ---------------------------------------------------
+# PAGE 2 — CUESTIONARIO
+# ---------------------------------------------------
+
+elif st.session_state.page == "cuestionario":
+
+    st.markdown("## 🕵️‍♀️ Cuéntame los detalles…")
+
+    with st.sidebar:
+        location = st.selectbox(
+            "¿Dónde fue la cita?",
+            ["Restaurante chic", "Cafetería mona", "Cita en el parque", "Cine", "Su casa (🚩)"]
+        )
+        alcohol = st.toggle("¿Hubo vinito? 🍷")
+        if st.button("⬅️ Volver"):
             st.session_state.page = "inicio"
             st.rerun()
 
-    df = st.session_state.get("score_df")
-    nivel_total = st.session_state.get("nivel_total")
-    answers = st.session_state.get("answers")
+    col1, col2, col3 = st.columns(3)
 
-    if df is None or nivel_total is None or answers is None:
-        st.error("No hay datos del análisis. Vuelve al cuestionario.")
-        st.stop()
+    with col1:
+        ex_locas = st.checkbox("Menciona a la ex")
+        interrupciones = st.checkbox("Te corta hablando")
+        futuro = st.checkbox("Love bombing")
 
-    # 1) Gráfica + veredicto visual
-    st.subheader("📊 Perfil de Riesgo")
-    chart = alt.Chart(df).mark_bar(cornerRadiusTopLeft=10, cornerRadiusTopRight=10).encode(
-        x=alt.X('Categoría', sort=None),
-        y=alt.Y('Peligro', scale=alt.Scale(domain=[0, 100])),
+    with col2:
+        selfies = st.checkbox("Se hace selfies")
+        crypto = st.checkbox("Habla de crypto")
+        perfume = st.select_slider("Nivel de perfume",
+                                   ["Elegante","Aceptable","Mareante","Tóxico"],
+                                   value="Aceptable")
+
+    with col3:
+        movil = st.number_input("Veces que miró el móvil",0,50,0)
+        camareros = st.radio("Trato al personal",
+                             ["Ejemplar","Seco","Maleducado"])
+
+    if st.button("⚖️ Analizar"):
+
+        answers = {
+            "location": location,
+            "alcohol": alcohol,
+            "ex_locas": int(ex_locas),
+            "interrupciones": int(interrupciones),
+            "futuro": int(futuro),
+            "selfies": int(selfies),
+            "crypto": int(crypto),
+            "perfume": perfume,
+            "movil": int(movil),
+            "camareros": camareros
+        }
+
+        df, nivel_total = compute_score(answers)
+
+        st.session_state.answers = answers
+        st.session_state.score_df = df
+        st.session_state.nivel_total = nivel_total
+        st.session_state.verdict_chat = [
+            {"role":"assistant","content":"Bestie… he analizado el informe confidencial 🚨","ts":stamp()},
+            {"role":"assistant","content":f"Índice de toxicidad: {nivel_total}%","ts":stamp()},
+        ]
+
+        st.session_state.page = "veredicto"
+        st.rerun()
+
+# ---------------------------------------------------
+# PAGE 3 — VEREDICTO + CHAT
+# ---------------------------------------------------
+
+elif st.session_state.page == "veredicto":
+
+    st.markdown("## 💬 Veredicto oficial de tu bestie")
+
+    with st.sidebar:
+        if st.button("🔁 Rehacer cuestionario"):
+            st.session_state.page = "cuestionario"
+            st.rerun()
+        if st.button("🏠 Inicio"):
+            st.session_state.page = "inicio"
+            st.rerun()
+
+    df = st.session_state.score_df
+    nivel_total = st.session_state.nivel_total
+    answers = st.session_state.answers
+
+    st.subheader("📊 Perfil de riesgo")
+    chart = alt.Chart(df).mark_bar().encode(
+        x='Categoría',
+        y=alt.Y('Peligro', scale=alt.Scale(domain=[0,100])),
         color=alt.value("#C71585")
-    ).properties(height=260)
+    )
     st.altair_chart(chart, use_container_width=True)
 
-    st.subheader("✨ Resultado")
     if nivel_total >= 75:
-        st.error(f"ÍNDICE DE TOXICIDAD: {nivel_total}%")
+        st.error(f"Toxicidad alta: {nivel_total}%")
     elif nivel_total >= 30:
-        st.warning(f"ÍNDICE DE TOXICIDAD: {nivel_total}%")
+        st.warning(f"Toxicidad moderada: {nivel_total}%")
     else:
-        st.success(f"ÍNDICE DE TOXICIDAD: {nivel_total}%")
+        st.success(f"Green-ish flag: {nivel_total}%")
         st.balloons()
 
-    # 2) Chat UI custom
     inject_chat_css()
-    if "verdict_chat" not in st.session_state:
-        st.session_state.verdict_chat = [{"role":"assistant","content":"Bestie…", "ts": stamp()}]
 
-    # Botón para pedir a Gemini (si no quieres que se llame siempre)
-    colA, colB = st.columns([1,1])
-    with colA:
-        gen = st.button("🔮 Pedir veredicto a Gemini")
-    with colB:
-        if st.button("🧹 Limpiar chat"):
-            st.session_state.verdict_chat = [{"role":"assistant","content":"Vale, empezamos de cero 😌", "ts": stamp()}]
-            st.rerun()
-
-    if gen:
-        prompt_ia = (
-            "Eres la mejor amiga de la chica que está teniendo esta cita. "
-            "Hablas como una girl actual, divertida, un poco sarcástica pero protectora. "
-            "Analiza si el chico es red flag o green flag y da consejo real.\n\n"
-            f"Contexto:\n"
-            f"- Índice de toxicidad: {nivel_total}%\n"
-            f"- Trato a camareros: {answers['camareros']}\n"
-            f"- ¿Habló de crypto?: {bool(answers['crypto'])}\n"
-            f"- Ubicación: {answers['location']}\n\n"
-            "Responde en máximo 4 frases cortas como si estuvieras chateando. "
-            "Sé graciosa y directa. Termina con un consejo práctico."
+    if st.button("🔮 Preguntar a Gemini"):
+        prompt = (
+            "Eres la mejor amiga protectora y sarcástica. "
+            f"Índice: {nivel_total}%.\n"
+            f"Trato a camareros: {answers['camareros']}.\n"
+            f"Habló de crypto: {bool(answers['crypto'])}.\n"
+            f"Ubicación: {answers['location']}.\n"
+            "Responde en máximo 4 frases cortas, estilo chat."
         )
 
-        try:
-            client = genai.Client(api_key=st.session_state.api_key)
-            with st.spinner("✨ Bestie está escribiendo..."):
-                response = client.models.generate_content(
-                    model="gemini-2.5-flash",
-                    contents=prompt_ia,
-                    config={"temperature": 1.2},
-                )
-
-            st.session_state.verdict_chat.append(
-                {"role":"assistant","content": response.text, "ts": stamp()}
+        client = genai.Client(api_key=st.session_state.api_key)
+        with st.spinner("Bestie está escribiendo..."):
+            response = client.models.generate_content(
+                model="gemini-2.5-flash",
+                contents=prompt,
+                config={"temperature":1.2}
             )
-            st.rerun()
 
-        except Exception as e:
-            if "429" in str(e):
-                st.error("El oráculo está saturado. Espera un poco y reintenta.")
-            else:
-                st.error(f"Error Gemini: {e}")
+        st.session_state.verdict_chat.append(
+            {"role":"assistant","content":response.text,"ts":stamp()}
+        )
+        st.rerun()
 
     render_custom_chat(st.session_state.verdict_chat)
-
