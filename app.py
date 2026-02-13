@@ -3,6 +3,8 @@ import pandas as pd
 import altair as alt
 from google import genai
 from datetime import datetime
+import streamlit.components.v1 as components
+import html as _html
 
 # ---------------------------------------------------
 # CONFIG
@@ -82,33 +84,40 @@ def inject_chat_css():
     """, unsafe_allow_html=True)
 
 def render_custom_chat(messages):
-    html = '<div class="chat-wrap" id="chatbox">'
+    parts = ['<div class="chat-wrap" id="chatbox">']
     for m in messages:
-        role = m.get("role","assistant")
-        content = (m.get("content","") or "").replace("<","&lt;").replace(">","&gt;")
-        ts = m.get("ts","")
+        role = m.get("role", "assistant")
+        content = _html.escape(m.get("content", "") or "").replace("\n", "<br>")
+        ts = _html.escape(m.get("ts", "") or "")
+
         if role == "user":
-            html += f"""
-              <div class="row user">
-                <div class="bubble user">{content}<div class="meta">{ts}</div></div>
-                <div class="avatar">🫵</div>
-              </div>
-            """
+            parts.append(
+                f'<div class="row user">'
+                f'  <div class="bubble user">{content}<div class="meta">{ts}</div></div>'
+                f'  <div class="avatar">🫵</div>'
+                f'</div>'
+            )
         else:
-            html += f"""
-              <div class="row assistant">
-                <div class="avatar">💅</div>
-                <div class="bubble assistant">{content}<div class="meta">{ts}</div></div>
-              </div>
-            """
-    html += "</div>"
-    html += """
+            parts.append(
+                f'<div class="row assistant">'
+                f'  <div class="avatar">💅</div>'
+                f'  <div class="bubble assistant">{content}<div class="meta">{ts}</div></div>'
+                f'</div>'
+            )
+
+    parts.append("</div>")
+    parts.append("""
     <script>
-      const el = window.parent.document.querySelector('#chatbox');
+      const el = document.getElementById('chatbox');
       if (el) { el.scrollTop = el.scrollHeight; }
     </script>
-    """
-    st.markdown(html, unsafe_allow_html=True)
+    """)
+
+    html_block = "".join(parts)
+
+    # OJO: el CSS lo sigues inyectando con inject_chat_css() en la página
+    components.html(html_block, height=520, scrolling=True)
+
 
 # ---------------------------------------------------
 # PAGE 1 — INICIO
