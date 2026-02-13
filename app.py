@@ -239,8 +239,6 @@ elif st.session_state.page == "veredicto":
         st.success(f"Green-ish flag: {nivel_total}%")
         st.balloons()
 
-    inject_chat_css()
-
     if st.button("🔮 Preguntar a Gemini"):
         prompt = (
             "Eres la mejor amiga protectora y sarcástica. "
